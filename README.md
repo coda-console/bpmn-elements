@@ -9,7 +9,8 @@ Isomorphic JavaScript BPMN 2.0 workflow elements suitable for bundling into fron
 > - event sub-processes started by a message or signal sent to the definition from outside, not only by events thrown inside the process;
 > - event sub-processes started by a timer (armed when their scope starts; an armed one does not hold up its scope's completion);
 > - interrupting event sub-processes end the rest of their scope;
-> - non-interrupting boundary events other than timers keep listening after they fire, until their activity ends.
+> - an external message goes to what waits for it first; only one nothing took starts an event sub-process waiting for it;
+> - non-interrupting message, signal and escalation boundary events keep listening after they fire, until their activity ends (a timer repeats by its cycle, a condition is met once).
 >
 > See `test/feature/coda-event-subprocess-feature.js`.
 
