@@ -761,6 +761,63 @@ ProcessExecution.prototype._interruptFor = function interruptFor(content) {
   }
 };
 
+/**
+ * Coda: an error an activity failed with that no boundary event caught starts an event sub-process waiting for it, as an
+ * error event thrown inside does: one for its code (its <error>'s errorCode), else one for any error. The error goes to that
+ * sub-process alone, not to whatever else waits for an error. It interrupts (an error start event always does): the rest
+ * of the scope ends, the failed activity having left already.
+ * @internal
+ * @param {any} content the failed activity's error message
+ * @returns {boolean} whether one took it
+ */
+ProcessExecution.prototype._catchInEventSubProcess = function catchInEventSubProcess(content) {
+  const code = content.error?.code;
+  const catching = [];
+  for (const activity of this[K_ELEMENTS].triggeredByEvent) {
+    if (!activity.isSubProcess || activity.isRunning) continue;
+    for (const start of this.context.getStartActivities(undefined, activity.id)) {
+      const ed = start.eventDefinitions?.find(d => d.type === 'bpmn:ErrorEventDefinition');
+      if (!ed) continue;
+      /** @type {any} */
+      const referenced = ed.reference?.id && this.context.getActivityById(ed.reference.id);
+      if (!referenced) catching.push({
+        activity
+      });else if (code !== undefined && '' + referenced.errorCode === '' + code) catching.unshift({
+        activity,
+        referenced
+      });
+    }
+  }
+  const [first] = catching;
+  if (!first) return false;
+  const {
+    activity,
+    referenced
+  } = first;
+  // The rest of the scope ends first: what runs, one entered just now (its entering not processed yet) too.
+  for (const child of this[K_ELEMENTS].children) {
+    if (child !== activity && child.isRunning) child.discard();
+  }
+  const error = {
+    ...(referenced && {
+      id: referenced.id,
+      name: referenced.name
+    }),
+    code,
+    message: content.error?.message,
+    messageType: 'throw'
+  };
+  activity.run(error);
+  activity.broker.publish('api', `process.throw.${this.executionId}`, {
+    message: error
+  }, {
+    type: 'throw',
+    delegate: true,
+    eventSubProcessesStarted: true
+  });
+  return true;
+};
+
 /** @internal */
 ProcessExecution.prototype._onMessageFlowEvent = function onMessageFlowEvent(routingKey, message) {
   this.broker.publish('message', routingKey, (0, _messageHelper.cloneContent)(message.content), message.properties);
@@ -912,6 +969,7 @@ ProcessExecution.prototype._onChildMessage = function onChildMessage(routingKey,
           });
           return this._debug('error was caught');
         }
+        if (this._catchInEventSubProcess(content)) return this._debug('error was caught by an event sub-process');
         return this._complete('error', {
           error: content.error
         });

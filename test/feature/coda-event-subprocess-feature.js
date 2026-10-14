@@ -422,3 +422,79 @@ Feature('Non-interrupting boundary events keep listening', () => {
     });
   });
 });
+
+Feature('Event sub-processes catching what an activity failed with', () => {
+  const failing = (onError) =>
+    definitionSource(
+      `<startEvent id="start" /><sequenceFlow id="to-fork" sourceRef="start" targetRef="fork" /><parallelGateway id="fork" />
+      <sequenceFlow id="to-step" sourceRef="fork" targetRef="step" /><serviceTask id="step" implementation="\${environment.services.fail}" />
+      <sequenceFlow id="to-end" sourceRef="step" targetRef="end" /><endEvent id="end" />
+      <sequenceFlow id="to-task" sourceRef="fork" targetRef="task" /><userTask id="task" />
+      <boundaryEvent id="task-error" attachedToRef="task"><errorEventDefinition /></boundaryEvent>
+      <sequenceFlow id="to-task-end" sourceRef="task" targetRef="task-end" /><endEvent id="task-end" />
+      <sequenceFlow id="from-task-error" sourceRef="task-error" targetRef="task-error-end" /><endEvent id="task-error-end" />
+      ${onError}`,
+      '<error id="Failed" errorCode="STEP_FAILED" /><error id="Other" errorCode="OTHER" />'
+    );
+  const onError = (id, ref) => `<subProcess id="${id}" triggeredByEvent="true">
+      <startEvent id="${id}-start"><errorEventDefinition ${ref ? `errorRef="${ref}"` : ''} /></startEvent>
+      <sequenceFlow id="${id}-to-end" sourceRef="${id}-start" targetRef="${id}-end" /><endEvent id="${id}-end" />
+    </subProcess>`;
+  const run = async (source) => {
+    const context = await testHelpers.context(source);
+    const definition = new Definition(context, {
+      services: {
+        fail(_context, next) {
+          next(Object.assign(new Error('step failed'), { code: 'STEP_FAILED' }));
+        },
+      },
+    });
+    const ended = {};
+    definition.broker.subscribeTmp(
+      'event',
+      'activity.end',
+      (_, message) => {
+        ended[message.content.id] = (ended[message.content.id] ?? 0) + 1;
+      },
+      { noAck: true }
+    );
+    const settled = new Promise((resolve) => {
+      definition.on('leave', () => resolve('completed'));
+      definition.on('error', () => resolve('failed'));
+    });
+    definition.run();
+    return { definition, ended, settled };
+  };
+
+  Scenario('the event sub-process for its error code takes a failed activity, ending the rest of the scope', () => {
+    let result;
+    When('a step fails beside a waiting task with its own error boundary event', async () => {
+      result = await run(failing(onError('on-any') + onError('on-other', 'Other') + onError('on-failed', 'Failed')));
+    });
+
+    Then('the run completes through the event sub-process for that code, and the task is ended, not caught', async () => {
+      expect(await result.settled).to.equal('completed');
+      expect(result.ended['on-failed-end']).to.equal(1);
+      expect([result.ended['on-any-end'], result.ended['on-other-end'], result.ended['task-error'], result.ended.task]).to.deep.equal([
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      ]);
+    });
+  });
+
+  Scenario('with none for its code, the one for any error takes it; with none at all, the run fails', () => {
+    let any, none;
+    When('a step fails, once with an event sub-process for any error, once with one for another code only', async () => {
+      any = await run(failing(onError('on-any') + onError('on-other', 'Other')));
+      none = await run(failing(onError('on-other', 'Other')));
+    });
+
+    Then('the first completes through the one for any error, the second fails', async () => {
+      expect(await any.settled).to.equal('completed');
+      expect(any.ended['on-any-end']).to.equal(1);
+      expect(await none.settled).to.equal('failed');
+    });
+  });
+});
