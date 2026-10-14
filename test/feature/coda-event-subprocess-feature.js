@@ -125,6 +125,47 @@ Feature('Event sub-processes triggered from outside the process', () => {
     });
   });
 
+  Scenario('a message something waits for goes to it; one nothing waits for starts the event sub-process', () => {
+    let definition;
+    Given('an event sub-process for a message, declared before a task with a message boundary event for it', async () => {
+      definition = await prepare(
+        definitionSource(
+          onMessage(false) +
+            waiting.replace('targetRef="end"', 'targetRef="after"') +
+            `<userTask id="after" /><sequenceFlow id="after-to-end" sourceRef="after" targetRef="end" />
+            <boundaryEvent id="bound" attachedToRef="task" cancelActivity="false"><messageEventDefinition messageRef="Message" /></boundaryEvent>
+            <sequenceFlow id="to-bound-end" sourceRef="bound" targetRef="bound-end" /><endEvent id="bound-end" />`,
+          '<message id="Message" name="poke" />'
+        )
+      );
+    });
+
+    When('ran, and the message is sent', () => {
+      definition.run();
+      definition.sendMessage({ id: 'Message' });
+    });
+
+    Then('the boundary event waiting for it took it, and the event sub-process did not start', () => {
+      expect(definition.ended.bound).to.equal(1);
+      expect(definition.getActivityById('on-message').counters).to.deep.equal({ taken: 0, discarded: 0 });
+      expect(definition.getPostponed().map((api) => api.id)).to.have.members(['task', 'bound']);
+    });
+
+    When('the user task is completed, so that the process waits at the next one only, and the message is sent again', () => {
+      definition
+        .getPostponed()
+        .find((api) => api.id === 'task')
+        .signal();
+      definition.sendMessage({ id: 'Message' });
+    });
+
+    Then('the event sub-process took it', () => {
+      expect(definition.ended.bound).to.equal(1);
+      expect(definition.ended['message-start']).to.equal(1);
+      expect(definition.getPostponed().map((api) => api.id)).to.deep.equal(['after']);
+    });
+  });
+
   Scenario('an interrupting event sub-process inside a sub-process interrupts that sub-process only', () => {
     let definition;
     Given('a sub-process waiting at a user task, with an interrupting message event sub-process inside it', async () => {

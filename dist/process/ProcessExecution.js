@@ -682,7 +682,7 @@ ProcessExecution.prototype._onDelegateEvent = function onDelegateEvent(message) 
   } else {
     this._debug(`delegate ${eventType} anonymous event`);
   }
-  if (this._startEventSubProcesses(eventType, content.message)) delegate = false;
+  if (this._startEventSubProcesses(eventType, content.message).length) delegate = false;
   this.getApi().sendApiMessage(eventType, content, {
     delegate: true,
     eventSubProcessesStarted: true
@@ -697,17 +697,17 @@ ProcessExecution.prototype._onDelegateEvent = function onDelegateEvent(message) 
  * @internal
  * @param {string} eventType message, signal, ...
  * @param {any} [eventMessage] the event's message, its id the referenced element's
- * @returns {boolean} whether one was started
+ * @returns {import('#types').Activity[]} those started
  */
 ProcessExecution.prototype._startEventSubProcesses = function startEventSubProcesses(eventType, eventMessage) {
-  let started = false;
+  const started = [];
   for (const activity of this[K_ELEMENTS].triggeredByEvent) {
     if (!activity.isSubProcess || activity.isRunning) continue;
     if (!this.context.getStartActivities({
       referenceId: eventMessage?.id,
       referenceType: eventType
     }, activity.id).length) continue;
-    started = true;
+    started.push(activity);
     activity.run(eventMessage);
   }
   return started;
@@ -1077,12 +1077,15 @@ ProcessExecution.prototype._onCancel = function onCancel() {
 /** @internal */
 ProcessExecution.prototype._onApiMessage = function onApiMessage(routingKey, message) {
   if (message.properties.delegate) {
-    // Coda: an event sent to the definition from outside (no source element in it); one thrown inside a process has
-    // started its event sub-processes where it was thrown (_onDelegateEvent).
-    if (!message.properties.eventSubProcessesStarted && !message.content.source) {
-      this._startEventSubProcesses(message.properties.type, message.content.message ?? message.content);
+    const consumed = this._delegateApiMessage(routingKey, message);
+    // Coda: an event sent to the definition from outside (no source element in it) that nothing waiting took starts the
+    // event sub-processes waiting for it, and goes to them; one thrown inside a process has started its event
+    // sub-processes where it was thrown (_onDelegateEvent).
+    if (consumed || message.properties.eventSubProcessesStarted || message.content.source) return;
+    for (const activity of this._startEventSubProcesses(message.properties.type, message.content.message ?? message.content)) {
+      activity.broker.publish('api', routingKey, (0, _messageHelper.cloneContent)(message.content), message.properties);
     }
-    return this._delegateApiMessage(routingKey, message);
+    return;
   }
   if (this.id !== message.content.id) {
     const child = this.getActivityById(message.content.id);
@@ -1125,7 +1128,9 @@ ProcessExecution.prototype._delegateApiMessage = function delegateApiMessage(rou
     child.broker.publish('api', routingKey, (0, _messageHelper.cloneContent)(message.content), message.properties);
     if (consumed && !continueOnConsumed) break;
   }
-  return broker.cancel(`_ct-delegate-${correlationId}`);
+  broker.cancel(`_ct-delegate-${correlationId}`);
+  // Coda: whether a child took it (_onApiMessage)
+  return consumed;
 };
 
 /** @internal */
