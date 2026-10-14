@@ -375,4 +375,33 @@ Feature('Non-interrupting boundary events keep listening', () => {
       expect(definition.environment.timers.executing).to.have.length(0);
     });
   });
+
+  Scenario('a non-interrupting conditional boundary event is met once', () => {
+    let definition;
+    Given('a user task with a non-interrupting conditional boundary event', async () => {
+      definition = await prepare(
+        definitionSource(
+          waiting +
+            `<boundaryEvent id="bound" attachedToRef="task" cancelActivity="false">
+              <conditionalEventDefinition><condition xsi:type="tFormalExpression">\${environment.variables.go}</condition></conditionalEventDefinition>
+            </boundaryEvent>
+            <sequenceFlow id="to-bound-end" sourceRef="bound" targetRef="bound-end" /><endEvent id="bound-end" />`
+        )
+      );
+    });
+
+    When('ran, the condition comes to hold and the boundary event is told to check it', () => {
+      definition.run();
+      definition.getProcesses()[0].environment.variables.go = true;
+      definition
+        .getPostponed()
+        .find((api) => api.id === 'bound')
+        .signal();
+    });
+
+    Then('it is met once, and the user task still waits', () => {
+      expect(definition.ended.bound).to.equal(1);
+      expect(definition.getPostponed().map((api) => api.id)).to.deep.equal(['task']);
+    });
+  });
 });
