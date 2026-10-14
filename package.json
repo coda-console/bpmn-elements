@@ -50,7 +50,6 @@
     "posttest": "npm run toc && npm run lint && npm run dist && npm run typecheck",
     "lint": "eslint . --cache && prettier . --check --cache",
     "typecheck": "tsc --noEmit && tsc --noEmit -p test",
-    "prepack": "npm run toc && npm run dist",
     "test:md": "texample ./docs/Examples.md,./docs/StartEvent.md,./docs/Extension.md,./docs/ConditionalEventDefinition.md",
     "cov:html": "c8 -r html -r text mocha -R @bonniernews/hot-bev -p -t 3000",
     "test:lcov": "c8 -r lcov mocha && npm run lint",

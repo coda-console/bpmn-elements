@@ -535,7 +535,8 @@ Feature('Escalate', () => {
     And('boss was not notified', () => {
       expect(boss).to.have.property('id', 'wakeBoss');
       expect(boss.owner.counters).to.have.property('taken', 1);
-      expect(boss.owner.counters).to.have.property('discarded', 0);
+      // Coda: the boss keeps listening after the first escalation and is let go when the sub process completes
+      expect(boss.owner.counters).to.have.property('discarded', 1);
     });
   });
 });

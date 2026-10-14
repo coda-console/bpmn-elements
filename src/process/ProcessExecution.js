@@ -58,6 +58,8 @@ export function ProcessExecution(parentActivity, context) {
     startEventCount: 0,
     triggeredByEvent: new Set(),
     detachedActivities: new Set(),
+    // Coda: the event sub-processes whose start event has happened, by execution (_interruptFor, _isArmed).
+    fired: new Set(),
     convergingGateways: new Set(),
   };
 
@@ -462,6 +464,8 @@ ProcessExecution.prototype._start = function start() {
     for (const a of this[K_ELEMENTS].triggeredByEvent) {
       if (a.isCatching && !a.isRunning) a.run();
     }
+  } else {
+    this._armEventSubProcesses();
   }
 
   postponed.clear();
@@ -690,16 +694,78 @@ ProcessExecution.prototype._onDelegateEvent = function onDelegateEvent(message) 
     this._debug(`delegate ${eventType} anonymous event`);
   }
 
-  for (const activity of this[K_ELEMENTS].triggeredByEvent) {
-    if (activity.isSubProcess && activity.getStartActivities({ referenceId: content.message?.id, referenceType: eventType }).length) {
-      delegate = false;
-      activity.run(content.message);
-    }
-  }
+  if (this._startEventSubProcesses(eventType, content.message)) delegate = false;
 
-  this.getApi().sendApiMessage(eventType, content, { delegate: true });
+  this.getApi().sendApiMessage(eventType, content, { delegate: true, eventSubProcessesStarted: true });
 
   return delegate;
+};
+
+/**
+ * Coda: start the event sub-processes waiting for an event, whether it was thrown inside the process or sent to it from
+ * outside (a message or signal delegated to the definition). One already running is not started again: the event goes
+ * to what runs, as any event does.
+ * @internal
+ * @param {string} eventType message, signal, ...
+ * @param {any} [eventMessage] the event's message, its id the referenced element's
+ * @returns {boolean} whether one was started
+ */
+ProcessExecution.prototype._startEventSubProcesses = function startEventSubProcesses(eventType, eventMessage) {
+  let started = false;
+  for (const activity of this[K_ELEMENTS].triggeredByEvent) {
+    if (!activity.isSubProcess || activity.isRunning) continue;
+    if (!this.context.getStartActivities({ referenceId: eventMessage?.id, referenceType: eventType }, activity.id).length) continue;
+    started = true;
+    activity.run(eventMessage);
+  }
+  return started;
+};
+
+/**
+ * Coda: an event sub-process started by a timer or a condition waits for it from the start of its scope.
+ * @internal
+ */
+ProcessExecution.prototype._armEventSubProcesses = function armEventSubProcesses() {
+  for (const activity of this[K_ELEMENTS].triggeredByEvent) {
+    if (!activity.isSubProcess || activity.isRunning) continue;
+    const arms = this.context
+      .getStartActivities(undefined, activity.id)
+      .some((start) => start.eventDefinitions?.some((ed) => /(Timer|Conditional)EventDefinition$/.test(ed.type)));
+    if (arms) activity.run();
+  }
+};
+
+/**
+ * Coda: an event sub-process waiting for what starts it (armed, not yet started): it holds nothing up.
+ * @internal
+ * @param {import('#types').ElementBrokerMessage} message the child's postponed message
+ */
+ProcessExecution.prototype._isArmed = function isArmed(message) {
+  const activity = this.getActivityById(message.content.id);
+  if (!activity?.triggeredByEvent || !activity.isSubProcess || this[K_ELEMENTS].fired.has(message.content.executionId)) return false;
+  const starts = new Set(this.context.getStartActivities(undefined, activity.id).map((start) => start.id));
+  // What runs inside it, itself aside.
+  const executing = (this._getChildApi(message)?.getPostponed?.() ?? []).filter((api) => api.id !== activity.id);
+  return executing.length > 0 && executing.every((api) => starts.has(api.id));
+};
+
+/**
+ * Coda: an interrupting event sub-process, once its start event has happened, ends whatever else its scope was doing.
+ * @internal
+ * @param {any} content the start event's end
+ */
+ProcessExecution.prototype._interruptFor = function interruptFor(content) {
+  const eventSubProcess = this.getActivityById(content.parent?.id);
+  if (!eventSubProcess?.triggeredByEvent || !eventSubProcess.isSubProcess) return;
+  const start = this.context.getStartActivities(undefined, eventSubProcess.id).find((a) => a.id === content.id);
+  if (!start) return;
+  // Started: no longer only waiting for what starts it (_isArmed), until it is left.
+  this[K_ELEMENTS].fired.add(content.parent.executionId);
+  if (start.behaviour?.isInterrupting === false) return;
+  for (const msg of [...this[K_ELEMENTS].postponed]) {
+    if (msg.content.id === eventSubProcess.id) continue;
+    this._getChildApi(msg)?.discard();
+  }
 };
 
 /** @internal */
@@ -727,6 +793,7 @@ ProcessExecution.prototype._onActivityEvent = function onActivityEvent(routingKe
   }
 
   if (delegate) delegate = this._onDelegateEvent(message);
+  if (routingKey === 'activity.end' && content.isStartEvent !== false) this._interruptFor(content);
 
   this[K_TRACKER].track(routingKey, message);
   this.broker.publish('event', routingKey, content, { ...properties, delegate, mandatory: false });
@@ -888,6 +955,7 @@ ProcessExecution.prototype._popPostponed = function popPostponed(byContent) {
 /** @internal */
 ProcessExecution.prototype._onChildCompleted = function onChildCompleted(message) {
   this._stateChangeMessage(message, false);
+  this[K_ELEMENTS].fired.delete(message.content.executionId);
   if (message.fields.redelivered) return message.ack();
 
   const { id, type, isConvergingGateway, isParallelGateway } = message.content;
@@ -910,6 +978,13 @@ ProcessExecution.prototype._onChildCompleted = function onChildCompleted(message
 
   message.ack();
   this._debug(`left <${id}> (${type}), pending activities ${postponedCount} ${[...postponed].map((m) => m.content.id)}`);
+
+  // Coda: what is left is only waiting for what would start an event sub-process, or detached: let it go.
+  const armed = [...postponed].filter((msg) => this._isArmed(msg));
+  if (armed.length && postponedCount === detachedActivities.size + armed.length) {
+    for (const msg of armed) this._getChildApi(msg)?.discard();
+    if (!detachedActivities.size) return;
+  }
 
   if (postponedCount && postponedCount === detachedActivities.size) {
     return this[K_ACTIVITY_Q].queueMessage(
@@ -1007,6 +1082,11 @@ ProcessExecution.prototype._onCancel = function onCancel() {
 /** @internal */
 ProcessExecution.prototype._onApiMessage = function onApiMessage(routingKey, message) {
   if (message.properties.delegate) {
+    // Coda: an event sent to the definition from outside (no source element in it); one thrown inside a process has
+    // started its event sub-processes where it was thrown (_onDelegateEvent).
+    if (!message.properties.eventSubProcessesStarted && !message.content.source) {
+      this._startEventSubProcesses(message.properties.type, message.content.message ?? message.content);
+    }
     return this._delegateApiMessage(routingKey, message);
   }
 

@@ -4,6 +4,15 @@
 
 Isomorphic JavaScript BPMN 2.0 workflow elements suitable for bundling into frontend script or just required into your nodejs project.
 
+> **Coda fork.** Branch `coda` is maintained by Coda on top of v18.1.0 and installed from Git (pinned by commit, `dist/` checked in, no build on install). It adds:
+>
+> - event sub-processes started by a message or signal sent to the definition from outside, not only by events thrown inside the process;
+> - event sub-processes started by a timer (armed when their scope starts; an armed one does not hold up its scope's completion);
+> - interrupting event sub-processes end the rest of their scope;
+> - non-interrupting boundary events other than timers keep listening after they fire, until their activity ends.
+>
+> See `test/feature/coda-event-subprocess-feature.js`.
+
 - [Examples](/docs/Examples.md)
 - [Handle extensions](/docs/Extension.md)
 - [Write your own behaviour](/docs/Extend.md)

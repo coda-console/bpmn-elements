@@ -121,6 +121,11 @@ BoundaryEventBehaviour.prototype._onExecutionMessage = function onExecutionMessa
 
 BoundaryEventBehaviour.prototype._onCompleted = function onCompleted(_, { content }) {
   if (content.cancelActivity === false || (!this.cancelActivity && !content.cancelActivity)) {
+    // Coda: a non-interrupting event other than a timer (a message, a signal, a condition) is listened for again while
+    // the activity goes on, each time it happens; a timer repeats as its own cycle says.
+    if (!this.cancelActivity && !this.activity.eventDefinitions?.some((ed) => /TimerEventDefinition$/.test(ed.type))) {
+      this._onRepeatMessage(_, { content: {} });
+    }
     this._stop();
     return this.broker.publish(
       'execution',
