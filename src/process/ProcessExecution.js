@@ -715,9 +715,12 @@ ProcessExecution.prototype._onDelegateEvent = function onDelegateEvent(message) 
 ProcessExecution.prototype._startEventSubProcesses = function startEventSubProcesses(eventType, eventMessage, sent) {
   const started = [];
   const referenceId = eventMessage?.id;
-  if (!referenceId) return started;
+  if (sent && !referenceId) return started;
+  // Thrown inside, an anonymous event starts what waits for one of its type with no reference.
   const named = (start) =>
-    start.eventDefinitions?.some((ed) => ed.reference?.id === referenceId && (sent || ed.reference.referenceType === eventType));
+    start.eventDefinitions?.some(
+      (ed) => ed.reference && ed.reference.id === referenceId && (sent || ed.reference.referenceType === eventType)
+    );
   for (const activity of this[K_ELEMENTS].triggeredByEvent) {
     if (!activity.isSubProcess || activity.isRunning) continue;
     if (!this.context.getStartActivities(undefined, activity.id).some(named)) continue;
