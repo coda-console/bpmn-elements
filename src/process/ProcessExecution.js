@@ -708,13 +708,19 @@ ProcessExecution.prototype._onDelegateEvent = function onDelegateEvent(message) 
  * @internal
  * @param {string} eventType message, signal, ...
  * @param {any} [eventMessage] the event's message, its id the referenced element's
+ * @param {boolean} [sent] sent from outside: what it names is what it is, whatever the api message's type (a signal to
+ * whatever waits for the element, or a message); ids are unique in a definition
  * @returns {import('#types').Activity[]} those started
  */
-ProcessExecution.prototype._startEventSubProcesses = function startEventSubProcesses(eventType, eventMessage) {
+ProcessExecution.prototype._startEventSubProcesses = function startEventSubProcesses(eventType, eventMessage, sent) {
   const started = [];
+  const referenceId = eventMessage?.id;
+  if (!referenceId) return started;
+  const named = (start) =>
+    start.eventDefinitions?.some((ed) => ed.reference?.id === referenceId && (sent || ed.reference.referenceType === eventType));
   for (const activity of this[K_ELEMENTS].triggeredByEvent) {
     if (!activity.isSubProcess || activity.isRunning) continue;
-    if (!this.context.getStartActivities({ referenceId: eventMessage?.id, referenceType: eventType }, activity.id).length) continue;
+    if (!this.context.getStartActivities(undefined, activity.id).some(named)) continue;
     started.push(activity);
     activity.run(eventMessage);
   }
@@ -1087,7 +1093,7 @@ ProcessExecution.prototype._onApiMessage = function onApiMessage(routingKey, mes
     // event sub-processes waiting for it, and goes to them; one thrown inside a process has started its event
     // sub-processes where it was thrown (_onDelegateEvent).
     if (consumed || message.properties.eventSubProcessesStarted || message.content.source) return;
-    for (const activity of this._startEventSubProcesses(message.properties.type, message.content.message ?? message.content)) {
+    for (const activity of this._startEventSubProcesses(message.properties.type, message.content.message ?? message.content, true)) {
       activity.broker.publish('api', routingKey, cloneContent(message.content), message.properties);
     }
     return;

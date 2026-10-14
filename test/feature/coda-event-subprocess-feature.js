@@ -99,6 +99,23 @@ Feature('Event sub-processes triggered from outside the process', () => {
     });
   });
 
+  Scenario('a message event sub-process started by the api signal naming the message, as it is sent to what waits for it', () => {
+    let definition;
+    Given('a process waiting at a user task, with a non-interrupting message event sub-process', async () => {
+      definition = await prepare(definitionSource(waiting + onMessage(false), '<message id="Message" name="push" />'));
+    });
+
+    When('ran, and the definition is signalled with the message', () => {
+      definition.run();
+      definition.signal({ id: 'Message', head: 'abc' });
+    });
+
+    Then('the event sub-process ran, and the user task still waits', () => {
+      expect(definition.ended['message-start']).to.equal(1);
+      expect(definition.getPostponed().map((api) => api.id)).to.deep.equal(['task']);
+    });
+  });
+
   Scenario('an event sub-process started by a signal sent to the definition', () => {
     let definition;
     Given('a process waiting at a user task, with a non-interrupting signal event sub-process', async () => {
