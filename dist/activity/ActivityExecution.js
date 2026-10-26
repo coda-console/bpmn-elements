@@ -95,6 +95,14 @@ ActivityExecution.prototype.activate = function activate() {
     onExecuteMessage,
     onParentApiMessage
   } = this[_constants.K_MESSAGE_HANDLERS];
+  // Coda: listening to the api before the execute queue is consumed, as on a fresh start. Resumed, its consumer takes
+  // the recovered messages at once, and a sub-process's execution subscribes to the same api then: were that first, an
+  // interrupting discard would clear what waits inside before this discards it, and stop none of it.
+  broker.subscribeTmp('api', `activity.*.${this.executionId}`, onParentApiMessage, {
+    noAck: true,
+    consumerTag: '_activity-api-execution',
+    priority: 200
+  });
   this[K_EXECUTE_Q].assertConsumer(onExecuteMessage, {
     exclusive: true,
     prefetch: batchSize * 2,
@@ -102,11 +110,6 @@ ActivityExecution.prototype.activate = function activate() {
     consumerTag: '_activity-execute'
   });
   if (this[_constants.K_COMPLETED]) return this.deactivate();
-  broker.subscribeTmp('api', `activity.*.${this.executionId}`, onParentApiMessage, {
-    noAck: true,
-    consumerTag: '_activity-api-execution',
-    priority: 200
-  });
 };
 
 /**
