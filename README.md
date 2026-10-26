@@ -15,6 +15,8 @@ Isomorphic JavaScript BPMN 2.0 workflow elements suitable for bundling into fron
 > - a sub-process recovered while something waits inside is interrupted as one never recovered is: what waits inside leaves with it.
 >
 > See `test/feature/coda-event-subprocess-feature.js` and `test/feature/coda-recovered-subprocess-feature.js`.
+>
+> Changes go to `coda` by pull request: Coda reviews each version, and before that runs the check workflow (`.coda/workflows/check.bpmn`), which is `bash scripts/check.sh`: the whole mocha suite, lint, the types, and a `dist/` that is what `src/` builds to. A change to `src/` bumps the version's last number; Coda then moves its pin to the merge commit.
 
 - [Examples](/docs/Examples.md)
 - [Handle extensions](/docs/Extension.md)

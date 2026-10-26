@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 引擎检查：声明为检查（coda:kind="check"），Coda 的 PR 流程每个版本评审前在 PR 的提交上调用它。
+     跑 scripts/check.sh：mocha 全套、lint、类型检查，并确认提交的 dist/ 就是 src/ 构建出的（Coda 从 Git 安装这里、不构建）。
+     BPMN 2.0，由 Coda 执行（coda 仓 docs/workflows.md）。 -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:coda="https://coda.pub/schema/bpmn/1.0"
+  id="check-definitions" targetNamespace="https://coda.pub/workflows/bpmn-elements">
+  <process id="check" name="引擎检查" isExecutable="true" coda:kind="check">
+    <startEvent id="start" />
+    <sequenceFlow id="to-check" sourceRef="start" targetRef="check-all" />
+    <scriptTask id="check-all" name="测试、lint、类型与 dist" coda:timeout="10" coda:status="引擎检查" scriptFormat="bash">
+      <script>bash scripts/check.sh</script>
+    </scriptTask>
+    <sequenceFlow id="checked" sourceRef="check-all" targetRef="end" />
+    <endEvent id="end" />
+  </process>
+</definitions>
