@@ -656,6 +656,8 @@ export type completedCounters = { completed: number; discarded: number };
 
 export interface ActivityExecutionState {
   completed: boolean;
+  /** Discarded before it executed (recovered and not resumed yet): it is discarded as it executes */
+  discardOnResume?: boolean;
   [x: string]: any;
 }
 
@@ -665,8 +667,6 @@ export interface ActivityState extends ElementState {
   stopped: boolean;
   counters: { taken: number; discarded: number };
   execution?: ActivityExecutionState;
-  /** Discarded after it was recovered and before it resumed: it is discarded as it resumes */
-  discardOnResume?: { content?: Record<string, any> };
 }
 
 export interface SequenceFlowState extends ElementState {

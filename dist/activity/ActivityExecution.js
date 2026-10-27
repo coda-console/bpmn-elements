@@ -8,6 +8,7 @@ var _Api = require("../Api.js");
 var _messageHelper = require("../messageHelper.js");
 var _constants = require("../constants.js");
 const K_EXECUTE_Q = Symbol.for('executeQ');
+const K_DISCARD_ON_RESUME = Symbol.for('discard on resume');
 const K_POSTPONED = Symbol.for('postponed');
 
 /**
@@ -70,15 +71,29 @@ ActivityExecution.prototype.execute = function execute(executeMessage) {
       // @ts-ignore
       this.source = new this.activity.Behaviour(this.activity, this.context);
     this.activate();
-    return this.broker.publish('execution', 'execute.resume.execution', (0, _messageHelper.cloneContent)(initMessage.content), {
+    this.broker.publish('execution', 'execute.resume.execution', (0, _messageHelper.cloneContent)(initMessage.content), {
       persistent: false
     });
+    return this._discardOnResume(initMessage);
   }
   this._debug('execute');
   this.activate();
   // @ts-ignore
   this.source = new this.activity.Behaviour(this.activity, this.context);
   this.broker.publish('execution', 'execute.start', (0, _messageHelper.cloneContent)(initMessage.content));
+  this._discardOnResume(initMessage);
+};
+
+/**
+ * Coda: a discard asked for before the execution had its execute message (recovered and not resumed yet, or resuming
+ * through an asynchronous format) is taken once it has it.
+ * @internal
+ * @param {import('#types').ElementBrokerMessage} initMessage
+ */
+ActivityExecution.prototype._discardOnResume = function discardOnResume(initMessage) {
+  if (!this[K_DISCARD_ON_RESUME] || this[_constants.K_COMPLETED]) return;
+  this[K_DISCARD_ON_RESUME] = false;
+  this.getApi(initMessage).discard();
 };
 
 /**
@@ -128,7 +143,12 @@ ActivityExecution.prototype.deactivate = function deactivate() {
 ActivityExecution.prototype.discard = function discard() {
   if (this[_constants.K_COMPLETED]) return;
   const initMessage = this[_constants.K_EXECUTE_MESSAGE];
-  if (!initMessage) return this.activity.logger.warn(`<${this.id}> is not executing`);
+  // Coda: not executing yet, it is discarded as it executes, not left to wait (an event based gateway discarding the rest of
+  // its targets as one completes while the run resumes); kept in its state until then.
+  if (!initMessage) {
+    this[K_DISCARD_ON_RESUME] = true;
+    return;
+  }
   this.getApi(initMessage).discard();
 };
 
@@ -187,7 +207,10 @@ ActivityExecution.prototype.getPostponed = function getPostponed() {
  */
 ActivityExecution.prototype.getState = function getState() {
   const result = {
-    completed: this[_constants.K_COMPLETED]
+    completed: this[_constants.K_COMPLETED],
+    ...(this[K_DISCARD_ON_RESUME] && {
+      discardOnResume: true
+    })
   };
   const source = this.source;
   if (!source || !source.getState) return result;
@@ -206,6 +229,7 @@ ActivityExecution.prototype.recover = function recover(state) {
   this[K_POSTPONED].clear();
   if (!state) return this;
   if ('completed' in state) this[_constants.K_COMPLETED] = state.completed;
+  this[K_DISCARD_ON_RESUME] = !!state.discardOnResume;
 
   // @ts-ignore
   const source = this.source = new this.activity.Behaviour(this.activity, this.context);
