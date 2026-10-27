@@ -508,14 +508,16 @@ Activity.prototype.resume = function resume() {
  */
 Activity.prototype.discard = function discard(discardContent) {
   if (!this.status) return this._runDiscard(discardContent);
-  // Recovered and not resumed yet (a sibling resumed before it completed and discards it): its run has nothing to take
-  // the discard yet, so it is discarded as it resumes.
-  if (this[K_RECOVERED]) {
-    this[K_DISCARD_ON_RESUME] = { content: discardContent };
-    return;
-  }
   const execution = this[K_EXEC].get('execution');
-  if (execution && !execution.completed) return execution.discard();
+  if (execution && !execution.completed) {
+    // Recovered and not resumed yet (a sibling resumed before it and discards it): its execution has nothing to take the
+    // discard yet, so it is discarded as it resumes.
+    if (this[K_RECOVERED]) {
+      this[K_DISCARD_ON_RESUME] = { content: discardContent };
+      return;
+    }
+    return execution.discard();
+  }
 
   this._deactivateRunConsumers();
   const broker = this.broker;
