@@ -500,6 +500,8 @@ declare module 'bpmn-elements' {
 
   export interface ActivityExecutionState {
 	completed: boolean;
+	/** Discarded before it executed (recovered and not resumed yet): it is discarded as it executes */
+	discardOnResume?: boolean;
 	[x: string]: any;
   }
 
@@ -737,7 +739,7 @@ declare module 'bpmn-elements' {
 		 * Begin executing the activity behaviour. Resumes if the message is redelivered.
 		 * @throws {Error} when message or executionId is missing
 		 */
-		execute(executeMessage: ElementBrokerMessage): number | undefined;
+		execute(executeMessage: ElementBrokerMessage): void;
 		executionId: string | undefined;
 		/**
 		 * Bind the execute queue and start consuming execute and api messages.
@@ -775,7 +777,9 @@ declare module 'bpmn-elements' {
 		 * Stop the execution via the activity api.
 		 */
 		stop(): void;
+		[K_DISCARD_ON_RESUME]: boolean | undefined;
 	}
+	const K_DISCARD_ON_RESUME: unique symbol;
 	/**
 	 * Drives the execution of a Definition. Activates executable processes, routes inter-process
 	 * delegate messages and call activity hand-offs, and rolls completion up to the Definition.

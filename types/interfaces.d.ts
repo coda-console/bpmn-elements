@@ -656,6 +656,8 @@ export type completedCounters = { completed: number; discarded: number };
 
 export interface ActivityExecutionState {
   completed: boolean;
+  /** Discarded before it executed (recovered and not resumed yet): it is discarded as it executes */
+  discardOnResume?: boolean;
   [x: string]: any;
 }
 
