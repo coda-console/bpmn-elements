@@ -64,4 +64,57 @@ Feature('Coda: recovered event based gateway', () => {
       expect(definition.getActivityById('messageEvent').counters).to.deep.include({ taken: 0, discarded: 1 });
     });
   });
+
+  Scenario('saved again as it resumes, before the discarded message event has resumed', () => {
+    let context, definition;
+    Given('a definition with a gateway waiting on a timer and a message', async () => {
+      context = await testHelpers.context(source);
+      definition = new Definition(context);
+    });
+
+    let state;
+    When('ran until the gateway waits, and stopped with its state saved', async () => {
+      const wait = definition.waitFor('wait');
+      definition.run();
+      await wait;
+      state = definition.getState();
+      definition.stop();
+    });
+
+    let midway;
+    When('recovered once the timer is past due, its state saved as the gateway ends', () => {
+      const due = new Date(Date.now() - 60000).toISOString();
+      const saved = JSON.stringify(state).replace(/"expireAt":"[^"]+"/, `"expireAt":"${due}"`);
+      definition = new Definition(context.clone());
+      definition.broker.subscribeTmp(
+        'event',
+        'activity.end',
+        (_, message) => {
+          if (message.content.id === 'gateway') midway = JSON.parse(JSON.stringify(definition.getState()));
+        },
+        { noAck: true }
+      );
+      definition.recover(JSON.parse(saved));
+      definition.resume();
+      definition.stop();
+      expect(midway, 'saved as the gateway ended').to.be.ok;
+    });
+
+    let end;
+    When('recovered again from that state and resumed', () => {
+      definition = new Definition(context.clone());
+      end = definition.waitFor('leave');
+      definition.recover(midway);
+      definition.resume();
+    });
+
+    Then('the run ends', () => {
+      return end;
+    });
+
+    And('the message event was discarded, nothing is left waiting', () => {
+      expect(definition.getPostponed()).to.have.length(0);
+      expect(definition.getActivityById('messageEvent').counters).to.deep.include({ taken: 0, discarded: 1 });
+    });
+  });
 });

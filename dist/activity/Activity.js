@@ -462,6 +462,9 @@ Activity.prototype.getState = function getState() {
     broker: brokerState,
     ...(execution && {
       execution: execution.getState()
+    }),
+    ...(this[K_DISCARD_ON_RESUME] && {
+      discardOnResume: this[K_DISCARD_ON_RESUME]
     })
   };
 };
@@ -479,7 +482,7 @@ Activity.prototype.recover = function recover(state) {
   this.stopped = state.stopped;
   this.status = state.status;
   this[K_RECOVERED] = !!state.status;
-  this[K_DISCARD_ON_RESUME] = undefined;
+  this[K_DISCARD_ON_RESUME] = state.discardOnResume;
   const exec = this[K_EXEC];
   exec.set('executionId', state.executionId);
   this[_constants.K_COUNTERS] = {
