@@ -12,9 +12,10 @@ Isomorphic JavaScript BPMN 2.0 workflow elements suitable for bundling into fron
 > - an error an activity fails with that no boundary event caught starts an error event sub-process for its code (or one for any error), which ends the rest of the scope;
 > - an external message goes to what waits for it first; only one nothing took starts an event sub-process waiting for it;
 > - non-interrupting message, signal and escalation boundary events keep listening after they fire, until their activity ends (a timer repeats by its cycle, a condition is met once);
-> - a sub-process recovered while something waits inside is interrupted as one never recovered is: what waits inside leaves with it.
+> - a sub-process recovered while something waits inside is interrupted as one never recovered is: what waits inside leaves with it;
+> - an activity discarded after it was recovered and before it resumed is discarded as it resumes, not left waiting (an event based gateway's other targets, when a timer past due ends it as the run resumes).
 >
-> See `test/feature/coda-event-subprocess-feature.js` and `test/feature/coda-recovered-subprocess-feature.js`.
+> See `test/feature/coda-event-subprocess-feature.js`, `test/feature/coda-recovered-subprocess-feature.js` and `test/feature/coda-recovered-gateway-feature.js`.
 
 - [Examples](/docs/Examples.md)
 - [Handle extensions](/docs/Extension.md)

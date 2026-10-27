@@ -19,6 +19,8 @@ import {
 
 const K_ACTIVITY_DEF = Symbol.for('activityDefinition');
 const K_CONSUMING_RUN_Q = Symbol.for('run queue consumer');
+const K_RECOVERED = Symbol.for('recovered, not resumed');
+const K_DISCARD_ON_RESUME = Symbol.for('discard on resume');
 const K_EVENT_DEFINITIONS = Symbol.for('eventDefinitions');
 const K_EXEC = Symbol.for('exec');
 const K_FLAGS = Symbol.for('flags');
@@ -455,6 +457,8 @@ Activity.prototype.recover = function recover(state) {
 
   this.stopped = state.stopped;
   this.status = state.status;
+  this[K_RECOVERED] = !!state.status;
+  this[K_DISCARD_ON_RESUME] = undefined;
   const exec = this[K_EXEC];
   exec.set('executionId', state.executionId);
 
@@ -481,6 +485,9 @@ Activity.prototype.resume = function resume() {
   if (!this.status) return this.activate();
 
   this.stopped = false;
+  const discarded = this[K_DISCARD_ON_RESUME];
+  this[K_RECOVERED] = false;
+  this[K_DISCARD_ON_RESUME] = undefined;
 
   this._consumeApi();
 
@@ -489,6 +496,8 @@ Activity.prototype.resume = function resume() {
 
   this[K_CONSUMING] = true;
   this._consumeRunQ();
+
+  if (discarded) this.discard(discarded.content);
 };
 
 /**
@@ -498,6 +507,12 @@ Activity.prototype.resume = function resume() {
  */
 Activity.prototype.discard = function discard(discardContent) {
   if (!this.status) return this._runDiscard(discardContent);
+  // Recovered and not resumed yet (a sibling resumed before it completed and discards it): its run has nothing to take
+  // the discard yet, so it is discarded as it resumes.
+  if (this[K_RECOVERED]) {
+    this[K_DISCARD_ON_RESUME] = { content: discardContent };
+    return;
+  }
   const execution = this[K_EXEC].get('execution');
   if (execution && !execution.completed) return execution.discard();
 
