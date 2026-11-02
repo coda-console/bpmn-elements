@@ -1,0 +1,25 @@
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="defs"><message id="reported" name="report"/><process id="watch" isExecutable="true">
+<startEvent id="new"><messageEventDefinition messageRef="reported"/></startEvent><sequenceFlow id="a" sourceRef="new" targetRef="look"/>
+<userTask id="look"/><sequenceFlow id="b" sourceRef="look" targetRef="archived"/><exclusiveGateway id="archived" default="still"/>
+<sequenceFlow id="gone" sourceRef="archived" targetRef="done"><conditionExpression xsi:type="tFormalExpression">${environment.variables.archived}</conditionExpression></sequenceFlow><endEvent id="done"/>
+<sequenceFlow id="still" sourceRef="archived" targetRef="waiting"/><eventBasedGateway id="waiting"/>
+<sequenceFlow id="to-due" sourceRef="waiting" targetRef="due"/><intermediateCatchEvent id="due"><timerEventDefinition><timeDuration>${environment.variables.poll}</timeDuration></timerEventDefinition></intermediateCatchEvent><sequenceFlow id="due-look" sourceRef="due" targetRef="look"/>
+<sequenceFlow id="to-again" sourceRef="waiting" targetRef="again"/><intermediateCatchEvent id="again"><messageEventDefinition messageRef="reported"/></intermediateCatchEvent><sequenceFlow id="again-look" sourceRef="again" targetRef="look"/>
+</process><bpmndi:BPMNDiagram id="diagram"><bpmndi:BPMNPlane id="plane" bpmnElement="watch">
+<bpmndi:BPMNShape id="new-shape" bpmnElement="new"><dc:Bounds x="80" y="160" width="60" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="look-shape" bpmnElement="look"><dc:Bounds x="200" y="160" width="60" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="archived-shape" bpmnElement="archived"><dc:Bounds x="350" y="160" width="60" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="done-shape" bpmnElement="done"><dc:Bounds x="500" y="60" width="60" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="waiting-shape" bpmnElement="waiting"><dc:Bounds x="500" y="260" width="60" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="due-shape" bpmnElement="due"><dc:Bounds x="650" y="220" width="60" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="again-shape" bpmnElement="again"><dc:Bounds x="650" y="340" width="60" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="a-edge" bpmnElement="a"><di:waypoint x="110" y="190"/><di:waypoint x="230" y="190"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="b-edge" bpmnElement="b"><di:waypoint x="230" y="190"/><di:waypoint x="380" y="190"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="gone-edge" bpmnElement="gone"><di:waypoint x="380" y="190"/><di:waypoint x="530" y="90"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="still-edge" bpmnElement="still"><di:waypoint x="380" y="190"/><di:waypoint x="530" y="290"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="to-due-edge" bpmnElement="to-due"><di:waypoint x="530" y="290"/><di:waypoint x="680" y="250"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="due-look-edge" bpmnElement="due-look"><di:waypoint x="680" y="250"/><di:waypoint x="230" y="190"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="to-again-edge" bpmnElement="to-again"><di:waypoint x="530" y="290"/><di:waypoint x="680" y="370"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="again-look-edge" bpmnElement="again-look"><di:waypoint x="680" y="370"/><di:waypoint x="230" y="190"/></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</definitions>
