@@ -68,9 +68,10 @@ describe('Coda: event gateway loop', () => {
       });
     }
 
-  for (const poll of ['PT1H', 'PT0S']) {
+  for (const poll of ['PT1H', '1970-01-01T00:00:00.000Z']) {
     it(`ends a new message-started run when its ${poll} expression timer wins`, async () => {
-      const context = await testHelpers.context(source, {
+      const xml = poll === 'PT1H' ? source : source.replace(/timeDuration/g, 'timeDate');
+      const context = await testHelpers.context(xml, {
         variables: { archived: false, poll },
         timers: new Timers({ setTimeout: () => 0, clearTimeout() {} }),
       });
@@ -78,7 +79,7 @@ describe('Coda: event gateway loop', () => {
       definition.run();
       definition.signal({ id: 'reported', type: 'message' });
       definition.signal({ id: 'look' });
-      if (poll !== 'PT0S') expire(definition);
+      if (poll === 'PT1H') expire(definition);
       finish(definition);
     });
   }
