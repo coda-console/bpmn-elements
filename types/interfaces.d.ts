@@ -662,6 +662,7 @@ export interface ActivityExecutionState {
 }
 
 export interface ActivityState extends ElementState {
+  inboundGateways?: Record<string, string | null>;
   status?: ActivityStatus;
   executionId: string;
   stopped: boolean;

@@ -1,0 +1,797 @@
+{
+  "id": "defs",
+  "type": "bpmn:Definitions",
+  "executionId": "defs_c273bc3da2",
+  "stateVersion": 18,
+  "status": "executing",
+  "stopped": false,
+  "counters": {
+    "completed": 0,
+    "discarded": 0
+  },
+  "environment": {
+    "settings": {
+      "enableDummyService": true
+    },
+    "variables": {
+      "archived": false,
+      "poll": "PT1H"
+    },
+    "output": {}
+  },
+  "execution": {
+    "executionId": "defs_c273bc3da2",
+    "stopped": false,
+    "completed": false,
+    "status": "executing",
+    "processes": [
+      {
+        "id": "watch",
+        "type": "bpmn:Process",
+        "executionId": "watch_bdf79e4248",
+        "environment": {
+          "settings": {
+            "enableDummyService": true
+          },
+          "variables": {
+            "archived": false,
+            "poll": "PT1H",
+            "fields": {
+              "routingKey": "run.execute",
+              "exchange": "run",
+              "redelivered": true,
+              "consumerTag": "_process-run"
+            },
+            "content": {
+              "id": "watch",
+              "type": "bpmn:Process",
+              "executionId": "watch_bdf79e4248",
+              "parent": {
+                "id": "defs",
+                "type": "bpmn:Definitions"
+              }
+            },
+            "properties": {
+              "messageId": "smq.mid-d4d806a7a2",
+              "timestamp": 1793641426467
+            }
+          },
+          "output": {}
+        },
+        "status": "executing",
+        "stopped": false,
+        "counters": {
+          "completed": 0,
+          "discarded": 0
+        },
+        "broker": {
+          "queues": [
+            {
+              "name": "run-q",
+              "options": {
+                "autoDelete": false,
+                "durable": true
+              },
+              "messages": [
+                {
+                  "fields": {
+                    "routingKey": "run.execute",
+                    "exchange": "run",
+                    "redelivered": true,
+                    "consumerTag": "_process-run"
+                  },
+                  "content": {
+                    "id": "watch",
+                    "type": "bpmn:Process",
+                    "executionId": "watch_bdf79e4248",
+                    "parent": {
+                      "id": "defs",
+                      "type": "bpmn:Definitions"
+                    }
+                  },
+                  "properties": {
+                    "messageId": "smq.mid-d4d806a7a2",
+                    "timestamp": 1793641426467
+                  }
+                },
+                {
+                  "fields": {
+                    "routingKey": "run.resume",
+                    "exchange": "run"
+                  },
+                  "content": {
+                    "id": "watch",
+                    "type": "bpmn:Process",
+                    "executionId": "watch_bdf79e4248",
+                    "parent": {
+                      "id": "defs",
+                      "type": "bpmn:Definitions"
+                    }
+                  },
+                  "properties": {
+                    "persistent": false,
+                    "messageId": "smq.mid-60b498eed5",
+                    "timestamp": 1793641426483
+                  }
+                }
+              ]
+            },
+            {
+              "name": "execute-watch_bdf79e4248-q",
+              "options": {
+                "autoDelete": false,
+                "durable": true
+              },
+              "messages": [
+                {
+                  "fields": {
+                    "routingKey": "activity.wait",
+                    "exchange": "event",
+                    "consumerTag": "_process-activity-watch_bdf79e4248"
+                  },
+                  "content": {
+                    "inbound": [
+                      {
+                        "action": "take",
+                        "result": true,
+                        "evaluationId": "due_7e5407cbe8",
+                        "id": "due-look",
+                        "targetId": "look",
+                        "sequenceId": "due-look_take_2305962908",
+                        "type": "bpmn:SequenceFlow",
+                        "sourceId": "due",
+                        "isSequenceFlow": true,
+                        "parent": {
+                          "id": "watch",
+                          "type": "bpmn:Process",
+                          "executionId": "watch_bdf79e4248"
+                        }
+                      }
+                    ],
+                    "executionId": "look_9f48d6fd1a",
+                    "id": "look",
+                    "type": "bpmn:UserTask",
+                    "parent": {
+                      "id": "watch",
+                      "type": "bpmn:Process",
+                      "executionId": "watch_bdf79e4248"
+                    },
+                    "state": "wait",
+                    "isRootScope": true,
+                    "accepts": ["signal", "error"]
+                  },
+                  "properties": {
+                    "persistent": true,
+                    "messageId": "smq.mid-5f04f165bd",
+                    "timestamp": 1793641426485
+                  }
+                },
+                {
+                  "fields": {
+                    "routingKey": "activity.wait",
+                    "exchange": "event",
+                    "consumerTag": "_process-activity-watch_bdf79e4248"
+                  },
+                  "content": {
+                    "inbound": [
+                      {
+                        "action": "take",
+                        "result": true,
+                        "evaluationId": "waiting_fae3774730",
+                        "id": "to-again",
+                        "targetId": "again",
+                        "sequenceId": "to-again_take_dd94656a9e",
+                        "type": "bpmn:SequenceFlow",
+                        "sourceId": "waiting",
+                        "isSequenceFlow": true,
+                        "parent": {
+                          "id": "watch",
+                          "type": "bpmn:Process",
+                          "executionId": "watch_bdf79e4248"
+                        }
+                      }
+                    ],
+                    "executionId": "again_290ccd4e2f",
+                    "id": "again",
+                    "type": "bpmn:MessageEventDefinition",
+                    "parent": {
+                      "id": "watch",
+                      "type": "bpmn:Process",
+                      "executionId": "watch_bdf79e4248"
+                    },
+                    "isCatching": true,
+                    "state": "start",
+                    "isDefinitionScope": true,
+                    "index": 0,
+                    "isRecovered": true,
+                    "message": {
+                      "id": "reported",
+                      "type": "bpmn:Message",
+                      "messageType": "message",
+                      "name": "report",
+                      "parent": {
+                        "id": "defs",
+                        "type": "bpmn:Definitions"
+                      }
+                    },
+                    "accepts": ["message", "signal"]
+                  },
+                  "properties": {
+                    "persistent": true,
+                    "messageId": "smq.mid-6cdbd664fb",
+                    "timestamp": 1793641426486
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "execution": {
+          "executionId": "watch_bdf79e4248",
+          "stopped": false,
+          "completed": false,
+          "status": "executing",
+          "children": [
+            {
+              "id": "new",
+              "type": "bpmn:StartEvent",
+              "executionId": "new_de8ab4d522",
+              "counters": {
+                "taken": 1,
+                "discarded": 0
+              },
+              "execution": {
+                "completed": true
+              }
+            },
+            {
+              "id": "look",
+              "type": "bpmn:UserTask",
+              "status": "executing",
+              "executionId": "look_9f48d6fd1a",
+              "counters": {
+                "taken": 1,
+                "discarded": 0
+              },
+              "broker": {
+                "queues": [
+                  {
+                    "name": "run-q",
+                    "options": {
+                      "autoDelete": false,
+                      "durable": true
+                    },
+                    "messages": [
+                      {
+                        "fields": {
+                          "routingKey": "run.execute",
+                          "exchange": "run",
+                          "consumerTag": "_activity-run"
+                        },
+                        "content": {
+                          "inbound": [
+                            {
+                              "action": "take",
+                              "result": true,
+                              "evaluationId": "due_7e5407cbe8",
+                              "id": "due-look",
+                              "targetId": "look",
+                              "sequenceId": "due-look_take_2305962908",
+                              "type": "bpmn:SequenceFlow",
+                              "sourceId": "due",
+                              "isSequenceFlow": true,
+                              "parent": {
+                                "id": "watch",
+                                "type": "bpmn:Process",
+                                "executionId": "watch_bdf79e4248"
+                              }
+                            }
+                          ],
+                          "executionId": "look_9f48d6fd1a",
+                          "id": "look",
+                          "type": "bpmn:UserTask",
+                          "parent": {
+                            "id": "watch",
+                            "type": "bpmn:Process"
+                          }
+                        },
+                        "properties": {
+                          "messageId": "smq.mid-bb0acd47a4",
+                          "timestamp": 1793641426484
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "name": "execute-q",
+                    "options": {
+                      "autoDelete": false,
+                      "durable": true
+                    },
+                    "messages": [
+                      {
+                        "fields": {
+                          "routingKey": "execute.start",
+                          "exchange": "execution",
+                          "consumerTag": "_activity-execute"
+                        },
+                        "content": {
+                          "inbound": [
+                            {
+                              "action": "take",
+                              "result": true,
+                              "evaluationId": "due_7e5407cbe8",
+                              "id": "due-look",
+                              "targetId": "look",
+                              "sequenceId": "due-look_take_2305962908",
+                              "type": "bpmn:SequenceFlow",
+                              "sourceId": "due",
+                              "isSequenceFlow": true,
+                              "parent": {
+                                "id": "watch",
+                                "type": "bpmn:Process",
+                                "executionId": "watch_bdf79e4248"
+                              }
+                            }
+                          ],
+                          "executionId": "look_9f48d6fd1a",
+                          "id": "look",
+                          "type": "bpmn:UserTask",
+                          "parent": {
+                            "id": "watch",
+                            "type": "bpmn:Process"
+                          },
+                          "state": "start",
+                          "isRootScope": true
+                        },
+                        "properties": {
+                          "messageId": "smq.mid-32d86f3434",
+                          "timestamp": 1793641426484
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "execution": {
+                "completed": false
+              }
+            },
+            {
+              "id": "archived",
+              "type": "bpmn:ExclusiveGateway",
+              "executionId": "archived_088bbc955e",
+              "counters": {
+                "taken": 1,
+                "discarded": 0
+              },
+              "execution": {
+                "completed": true
+              }
+            },
+            {
+              "id": "done",
+              "type": "bpmn:EndEvent",
+              "counters": {
+                "taken": 0,
+                "discarded": 0
+              }
+            },
+            {
+              "id": "waiting",
+              "type": "bpmn:EventBasedGateway",
+              "executionId": "waiting_fae3774730",
+              "stopped": false,
+              "counters": {
+                "taken": 1,
+                "discarded": 0
+              },
+              "execution": {
+                "completed": true
+              }
+            },
+            {
+              "id": "due",
+              "type": "bpmn:IntermediateCatchEvent",
+              "executionId": "due_7e5407cbe8",
+              "stopped": false,
+              "counters": {
+                "taken": 1,
+                "discarded": 0
+              },
+              "execution": {
+                "completed": true
+              }
+            },
+            {
+              "id": "again",
+              "type": "bpmn:IntermediateCatchEvent",
+              "status": "executing",
+              "executionId": "again_290ccd4e2f",
+              "stopped": false,
+              "counters": {
+                "taken": 0,
+                "discarded": 0
+              },
+              "broker": {
+                "queues": [
+                  {
+                    "name": "run-q",
+                    "options": {
+                      "autoDelete": false,
+                      "durable": true
+                    },
+                    "messages": [
+                      {
+                        "fields": {
+                          "routingKey": "run.execute",
+                          "exchange": "run",
+                          "redelivered": true,
+                          "consumerTag": "_activity-run"
+                        },
+                        "content": {
+                          "inbound": [
+                            {
+                              "action": "take",
+                              "result": true,
+                              "evaluationId": "waiting_fae3774730",
+                              "id": "to-again",
+                              "targetId": "again",
+                              "sequenceId": "to-again_take_dd94656a9e",
+                              "type": "bpmn:SequenceFlow",
+                              "sourceId": "waiting",
+                              "isSequenceFlow": true,
+                              "parent": {
+                                "id": "watch",
+                                "type": "bpmn:Process",
+                                "executionId": "watch_bdf79e4248"
+                              }
+                            }
+                          ],
+                          "executionId": "again_290ccd4e2f",
+                          "id": "again",
+                          "type": "bpmn:IntermediateCatchEvent",
+                          "parent": {
+                            "id": "watch",
+                            "type": "bpmn:Process"
+                          },
+                          "isCatching": true
+                        },
+                        "properties": {
+                          "messageId": "smq.mid-49fb95e895",
+                          "timestamp": 1793641426477
+                        }
+                      },
+                      {
+                        "fields": {
+                          "routingKey": "run.resume",
+                          "exchange": "run"
+                        },
+                        "content": {
+                          "id": "again",
+                          "type": "bpmn:IntermediateCatchEvent",
+                          "status": "executing",
+                          "parent": {
+                            "id": "watch",
+                            "type": "bpmn:Process"
+                          },
+                          "isCatching": true
+                        },
+                        "properties": {
+                          "persistent": false,
+                          "messageId": "smq.mid-5140af963c",
+                          "timestamp": 1793641426485
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "name": "execute-q",
+                    "options": {
+                      "autoDelete": false,
+                      "durable": true
+                    },
+                    "messages": [
+                      {
+                        "fields": {
+                          "routingKey": "execute.start",
+                          "exchange": "execution",
+                          "redelivered": true,
+                          "consumerTag": "_activity-execute"
+                        },
+                        "content": {
+                          "inbound": [
+                            {
+                              "action": "take",
+                              "result": true,
+                              "evaluationId": "waiting_fae3774730",
+                              "id": "to-again",
+                              "targetId": "again",
+                              "sequenceId": "to-again_take_dd94656a9e",
+                              "type": "bpmn:SequenceFlow",
+                              "sourceId": "waiting",
+                              "isSequenceFlow": true,
+                              "parent": {
+                                "id": "watch",
+                                "type": "bpmn:Process",
+                                "executionId": "watch_bdf79e4248"
+                              }
+                            }
+                          ],
+                          "executionId": "again_290ccd4e2f_0",
+                          "id": "again",
+                          "type": "bpmn:MessageEventDefinition",
+                          "parent": {
+                            "id": "again",
+                            "type": "bpmn:IntermediateCatchEvent",
+                            "executionId": "again_290ccd4e2f",
+                            "path": [
+                              {
+                                "id": "watch",
+                                "type": "bpmn:Process"
+                              }
+                            ]
+                          },
+                          "isCatching": true,
+                          "state": "start",
+                          "isDefinitionScope": true,
+                          "index": 0
+                        },
+                        "properties": {
+                          "messageId": "smq.mid-cd33d1be02",
+                          "timestamp": 1793641426477
+                        }
+                      },
+                      {
+                        "fields": {
+                          "routingKey": "execute.update",
+                          "exchange": "execution",
+                          "consumerTag": "_activity-execute"
+                        },
+                        "content": {
+                          "inbound": [
+                            {
+                              "action": "take",
+                              "result": true,
+                              "evaluationId": "waiting_fae3774730",
+                              "id": "to-again",
+                              "targetId": "again",
+                              "sequenceId": "to-again_take_dd94656a9e",
+                              "type": "bpmn:SequenceFlow",
+                              "sourceId": "waiting",
+                              "isSequenceFlow": true,
+                              "parent": {
+                                "id": "watch",
+                                "type": "bpmn:Process",
+                                "executionId": "watch_bdf79e4248"
+                              }
+                            }
+                          ],
+                          "executionId": "again_290ccd4e2f",
+                          "id": "again",
+                          "type": "bpmn:IntermediateCatchEvent",
+                          "parent": {
+                            "id": "watch",
+                            "type": "bpmn:Process"
+                          },
+                          "isCatching": true,
+                          "state": "start",
+                          "isRootScope": true,
+                          "preventComplete": true,
+                          "isRecovered": true
+                        },
+                        "properties": {
+                          "messageId": "smq.mid-6f0475b444",
+                          "timestamp": 1793641426486
+                        }
+                      },
+                      {
+                        "fields": {
+                          "routingKey": "execute.resume.execution",
+                          "exchange": "execution",
+                          "consumerTag": "_activity-execute"
+                        },
+                        "content": {
+                          "inbound": [
+                            {
+                              "action": "take",
+                              "result": true,
+                              "evaluationId": "waiting_fae3774730",
+                              "id": "to-again",
+                              "targetId": "again",
+                              "sequenceId": "to-again_take_dd94656a9e",
+                              "type": "bpmn:SequenceFlow",
+                              "sourceId": "waiting",
+                              "isSequenceFlow": true,
+                              "parent": {
+                                "id": "watch",
+                                "type": "bpmn:Process",
+                                "executionId": "watch_bdf79e4248"
+                              }
+                            }
+                          ],
+                          "executionId": "again_290ccd4e2f",
+                          "id": "again",
+                          "type": "bpmn:IntermediateCatchEvent",
+                          "parent": {
+                            "id": "watch",
+                            "type": "bpmn:Process"
+                          },
+                          "isCatching": true,
+                          "state": "start",
+                          "isRootScope": true
+                        },
+                        "properties": {
+                          "persistent": false,
+                          "messageId": "smq.mid-549ed76ce2",
+                          "timestamp": 1793641426486
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "execution": {
+                "completed": false
+              }
+            }
+          ],
+          "flows": [
+            {
+              "id": "a",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 1,
+                "discard": 0
+              }
+            },
+            {
+              "id": "b",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 1,
+                "discard": 0
+              }
+            },
+            {
+              "id": "gone",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 0,
+                "discard": 0
+              }
+            },
+            {
+              "id": "still",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 1,
+                "discard": 0
+              }
+            },
+            {
+              "id": "to-due",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 1,
+                "discard": 0
+              }
+            },
+            {
+              "id": "due-look",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 1,
+                "discard": 0
+              }
+            },
+            {
+              "id": "to-again",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 1,
+                "discard": 0
+              }
+            },
+            {
+              "id": "again-look",
+              "type": "bpmn:SequenceFlow",
+              "counters": {
+                "looped": 0,
+                "take": 0,
+                "discard": 0
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "broker": {
+    "queues": [
+      {
+        "name": "run-q",
+        "options": {
+          "autoDelete": false,
+          "durable": true
+        },
+        "messages": [
+          {
+            "fields": {
+              "routingKey": "run.execute",
+              "exchange": "run",
+              "redelivered": true,
+              "consumerTag": "_definition-run"
+            },
+            "content": {
+              "id": "defs",
+              "type": "bpmn:Definitions",
+              "executionId": "defs_c273bc3da2"
+            },
+            "properties": {
+              "messageId": "smq.mid-f23baeb7cd",
+              "timestamp": 1793641426466
+            }
+          },
+          {
+            "fields": {
+              "routingKey": "run.resume",
+              "exchange": "run"
+            },
+            "content": {
+              "id": "defs",
+              "type": "bpmn:Definitions",
+              "executionId": "defs_c273bc3da2"
+            },
+            "properties": {
+              "persistent": false,
+              "messageId": "smq.mid-daa1cea752",
+              "timestamp": 1793641426483
+            }
+          }
+        ]
+      },
+      {
+        "name": "execute-defs_c273bc3da2-q",
+        "options": {
+          "autoDelete": false,
+          "durable": true
+        },
+        "messages": [
+          {
+            "fields": {
+              "routingKey": "process.start",
+              "exchange": "event",
+              "redelivered": true,
+              "consumerTag": "_definition-activity-defs_c273bc3da2"
+            },
+            "content": {
+              "id": "watch",
+              "type": "bpmn:Process",
+              "executionId": "watch_bdf79e4248",
+              "parent": {
+                "id": "defs",
+                "type": "bpmn:Definitions",
+                "executionId": "defs_c273bc3da2"
+              },
+              "state": "start"
+            },
+            "properties": {
+              "type": "start",
+              "mandatory": false,
+              "messageId": "smq.mid-3f29418cd9",
+              "timestamp": 1793641426467
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

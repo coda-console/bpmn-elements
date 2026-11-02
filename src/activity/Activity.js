@@ -23,6 +23,7 @@ const K_EVENT_DEFINITIONS = Symbol.for('eventDefinitions');
 const K_EXEC = Symbol.for('exec');
 const K_FLAGS = Symbol.for('flags');
 const K_FLOWS = Symbol.for('flows');
+const K_INBOUND_GATEWAYS = Symbol.for('inbound gateways');
 
 /**
  * Activity wraps any element (task, event, gateway) and orchestrates its lifecycle through the broker.
@@ -428,7 +429,7 @@ Activity.prototype.getState = function getState() {
   const execution = exec.get('execution');
   const executionId = exec.get('executionId');
   const brokerState = this.broker.getState(true);
-  if (!brokerState && this.environment.settings.disableTrackState) return;
+  if (!brokerState && !this[K_INBOUND_GATEWAYS] && this.environment.settings.disableTrackState) return;
 
   return {
     id: this.id,
@@ -438,6 +439,7 @@ Activity.prototype.getState = function getState() {
     stopped: this.stopped,
     counters: this.counters,
     broker: brokerState,
+    ...(this[K_INBOUND_GATEWAYS] && { inboundGateways: { ...this[K_INBOUND_GATEWAYS] } }),
     ...(execution && { execution: execution.getState() }),
   };
 };
@@ -453,6 +455,7 @@ Activity.prototype.recover = function recover(state) {
   // @ts-ignore
   if (!state) return this;
 
+  this[K_INBOUND_GATEWAYS] = state.inboundGateways && { ...state.inboundGateways };
   this.stopped = state.stopped;
   this.status = state.status;
   const exec = this[K_EXEC];
@@ -507,6 +510,16 @@ Activity.prototype.discard = function discard(discardContent) {
   broker.publish('run', 'run.discard', cloneContent(this[K_STATE_MESSAGE].content));
   this[K_CONSUMING] = true;
   this._consumeRunQ();
+};
+
+/**
+ * Accept inbound flows only from this event gateway execution; null closes its race.
+ * @param {string} sourceId
+ * @param {string | null} executionId
+ */
+Activity.prototype.setInboundGateway = function setInboundGateway(sourceId, executionId) {
+  if (!this[K_INBOUND_GATEWAYS]) this[K_INBOUND_GATEWAYS] = Object.create(null);
+  this[K_INBOUND_GATEWAYS][sourceId] = executionId;
 };
 
 /**
@@ -715,8 +728,20 @@ Activity.prototype._onInbound = function onInbound(routingKey, message) {
         ...(content.inbound?.length && { inbound: content.inbound }),
       });
     }
+    case 'flow.take': {
+      const gateways = this[K_INBOUND_GATEWAYS];
+      // A gateway may finish while this activation is still queued behind an earlier execution.
+      // Discard through the normal lifecycle so the process also acknowledges its sequence token.
+      if (
+        gateways &&
+        Object.prototype.hasOwnProperty.call(gateways, content.sourceId) &&
+        (gateways[content.sourceId] === null || gateways[content.sourceId] !== content.evaluationId)
+      ) {
+        return this._runDiscard({ inbound: [cloneContent(content)] });
+      }
+      return this.run({ message: content.message, inbound: [cloneContent(content)] });
+    }
     case 'association.take':
-    case 'flow.take':
     case 'activity.restart':
     case 'activity.enter':
       return this.run({

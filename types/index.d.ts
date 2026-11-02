@@ -506,6 +506,7 @@ declare module 'bpmn-elements' {
   }
 
   export interface ActivityState extends ElementState {
+	inboundGateways?: Record<string, string | null>;
 	status?: ActivityStatus;
 	executionId: string;
 	stopped: boolean;
@@ -940,6 +941,10 @@ declare module 'bpmn-elements' {
 		 * @param discardContent Optional content propagated with the discard
 		 * */
 		discard(discardContent?: Record<string, any>): void;
+		/**
+		 * Accept inbound flows only from this event gateway execution; null closes its race.
+		 * */
+		setInboundGateway(sourceId: string, executionId: string | null): void;
 		/**
 		 * Subscribe to inbound triggers (sequence flows, attached activity, or compensation associations).
 		 * @returns count of subscribed triggers

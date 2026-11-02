@@ -1,0 +1,8 @@
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="defs"><message id="reported" name="report"/><process id="watch" isExecutable="true">
+<startEvent id="new"><messageEventDefinition messageRef="reported"/></startEvent><sequenceFlow id="a" sourceRef="new" targetRef="look"/>
+<userTask id="look"/><sequenceFlow id="b" sourceRef="look" targetRef="archived"/><exclusiveGateway id="archived" default="still"/>
+<sequenceFlow id="gone" sourceRef="archived" targetRef="done"><conditionExpression xsi:type="tFormalExpression">${environment.variables.archived}</conditionExpression></sequenceFlow><endEvent id="done"/>
+<sequenceFlow id="still" sourceRef="archived" targetRef="waiting"/><eventBasedGateway id="waiting"/>
+<sequenceFlow id="to-due" sourceRef="waiting" targetRef="due"/><intermediateCatchEvent id="due"><timerEventDefinition><timeDuration>${environment.variables.poll}</timeDuration></timerEventDefinition></intermediateCatchEvent><sequenceFlow id="due-look" sourceRef="due" targetRef="look"/>
+<sequenceFlow id="to-again" sourceRef="waiting" targetRef="again"/><intermediateCatchEvent id="again"><messageEventDefinition messageRef="reported"/></intermediateCatchEvent><sequenceFlow id="again-look" sourceRef="again" targetRef="look"/>
+</process></definitions>

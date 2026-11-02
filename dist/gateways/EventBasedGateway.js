@@ -68,6 +68,7 @@ EventBasedGatewayBehaviour.prototype.execute = function execute(executeMessage) 
   });
   this[_constants.K_COMPLETED] = false;
   if (!executeMessage.fields.redelivered) {
+    for (const target of targets) target.setInboundGateway(this.id, executionId);
     // @ts-ignore
     return broker.publish('execution', 'execute.outbound.take', (0, _messageHelper.cloneContent)(executeContent, {
       outboundTaken: true
@@ -83,6 +84,8 @@ EventBasedGatewayBehaviour.prototype._onTargetCompleted = function onTargetCompl
   const executionId = executeContent.executionId;
   this.activity.logger.debug(`<${executionId} (${this.id})> <${targetExecutionId}> completed run, discarding the rest`);
   this._stop();
+  // Close every target before discarding any: the winner may also have another activation queued.
+  for (const target of this[_constants.K_TARGETS]) target.setInboundGateway(this.id, null);
   for (const target of this[_constants.K_TARGETS]) {
     if (target === owner) continue;
     target.discard();
